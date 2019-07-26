@@ -1,0 +1,66 @@
+{
+  "name": "Космос Х",
+  "game_time": 3,
+  "period": 1,
+  "gov_pass": "QWEASD",
+  "adm_pass": "CXZDSA",
+  "resources": [
+        {
+          "name": "Пища",
+          "production": 1,
+          "min_price": 10,
+          "max_price": 250,
+          "k":0.1
+        },
+        {
+          "name": "Топливо",
+          "production": 1,
+          "min_price": 20,
+          "max_price": 500,
+          "k": 0.25
+        },
+        {
+          "name": "Микросхемы",
+          "production": 1,
+          "min_price": 40,
+          "max_price": 1200,
+          "k": 0.2
+        },
+        {
+          "name": "Кристаллы",
+          "production": 2,
+          "min_price": 60,
+          "max_price": 1700,
+          "k": 0.25
+        },
+        {
+          "name": "Ирридий",
+          "production": 1,
+          "min_price": 100,
+          "max_price": 2000,
+          "k": 0.06
+        }
+      ],
+  "points":[
+    {
+      "name": "Havana",
+      "base_resource": 0,
+      "resources":[
+        {"amount":25, "price":29},
+        {"amount":20, "price":83},
+        {"amount":15, "price":300},
+        {"amount":10, "price":456},
+        {"amount":5, "price": 1500}
+      ]
+    },
+    {
+      "name": "Tortuga",
+      "base_resource":1,
+      "resources":[
+        {"amount":5, "price":720},
+        {"amount":10, "price":300}
+      ]
+    }
+  ],
+  "help_message": "Правила игры: http://ru.wikipedia.org"
+}
