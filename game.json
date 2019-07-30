@@ -1,7 +1,7 @@
 {
   "name": "Космос Х",
   "game_time": 3,
-  "period": 1,
+  "period": 10,
   "gov_pass": "QWEASD",
   "adm_pass": "CXZDSA",
   "resources": [
@@ -43,22 +43,58 @@
       ],
   "points":[
     {
-      "name": "Havana",
+      "name": "Земля",
       "base_resource": 0,
       "resources":[
-        {"amount":25, "price":29},
+        {"amount":30, "price":29},
         {"amount":20, "price":83},
         {"amount":15, "price":300},
-        {"amount":10, "price":456},
-        {"amount":5, "price": 1500}
+        {"amount":1, "price":456},
+        {"amount":0, "price": 1500}
       ]
     },
     {
-      "name": "Tortuga",
-      "base_resource":1,
+      "name": "Марс",
+      "base_resource": 1,
       "resources":[
-        {"amount":5, "price":720},
-        {"amount":10, "price":300}
+        {"amount":30, "price":29},
+        {"amount":20, "price":83},
+        {"amount":15, "price":300},
+        {"amount":1, "price":456},
+        {"amount":0, "price": 1500}
+      ]
+    },
+    {
+      "name": "Альфа Центавра",
+      "base_resource": 2,
+      "resources":[
+        {"amount":30, "price":29},
+        {"amount":20, "price":83},
+        {"amount":15, "price":300},
+        {"amount":1, "price":456},
+        {"amount":0, "price": 1500}
+      ]
+    },
+    {
+      "name": "Пандора",
+      "base_resource": 3,
+      "resources":[
+        {"amount":30, "price":29},
+        {"amount":20, "price":83},
+        {"amount":15, "price":300},
+        {"amount":20, "price":456},
+        {"amount":3, "price": 1500}
+      ]
+    },
+    {
+      "name": "Кеплер-3241",
+      "base_resource": 4,
+      "resources":[
+        {"amount":3, "price":29},
+        {"amount":6, "price":83},
+        {"amount":5, "price":300},
+        {"amount":2, "price":456},
+        {"amount":10, "price": 1500}
       ]
     }
   ],

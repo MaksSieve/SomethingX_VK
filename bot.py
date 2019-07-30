@@ -14,7 +14,7 @@ import configparser
 import sys
 
 import db
-from core import Game
+from game import Game
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.DEBUG,
@@ -40,13 +40,13 @@ class Keyboards:
     @staticmethod
     def auth_keyboard():
         k = VkKeyboard()
-        k.add_button("Капитан", VkKeyboardColor.PRIMARY)
+        k.add_button("Капитан", VkKeyboardColor.POSITIVE)
         k.add_line()
         k.add_button("Губернатор", VkKeyboardColor.PRIMARY)
         k.add_line()
-        k.add_button("Админ", VkKeyboardColor.PRIMARY)
+        k.add_button("Админ", VkKeyboardColor.NEGATIVE)
         k.add_line()
-        k.add_button("Назад", VkKeyboardColor.PRIMARY)
+        k.add_button("Назад", VkKeyboardColor.DEFAULT)
         return k.get_keyboard()
 
     @staticmethod
@@ -113,26 +113,33 @@ class Bot:
                     if event.to_me:
                         self.dispatch(event)
 
-    def pricing(self):
+    def resource_controlling(self):
         print(f"Pricing started. Pricing every {game.period} minutes")
         print(f"Waiting for game starting...")
         while True:
+            sleep(game.period * 60)
             if game.state == 1:
-                dt = game.current_time()
-                if (dt.seconds / 60 % game.period) == 0:
-                    print(f"Прошло {dt.seconds} сукунд или {dt.seconds/60} минут")
-                    print("Обновление цен!!!")
-                    game.update_prices()
-                    for user in self.users.get_users():
-                        self.write_msg(user['user_id'], f"Цены обновлены!!!")
-            sleep(1)
+                print(f"От начала игры прошло {game.current_time().seconds/60} минут...")
+                print("Производство ресурсов...")
+                game.produce_resources()
+                print("Обновление цен...")
+                game.update_prices()
+                for user in self.users.get_users():
+                    if user['auth'] == 1:
+                        self.write_msg(user['user_id'], f"Цены обновлены")
+                        self.write_msg(user['user_id'], f"{game.get_resources_on_point_string(user['point'])}")
+            if game.current_time().seconds/3600 >= game.game_time:
+                game.state = 0
+                print(f"От начала игры прошло {game.current_time().seconds/60} минут...")
+                for user in self.users.get_users():
+                    self.write_msg(user['user_id'], f"Игра окончена!")
 
     def run(self):
         polling = trd.Thread(target=self.polling, name="polling")
-        pricing = trd.Thread(target=self.pricing, name="pricing")
+        resource_controlling = trd.Thread(target=self.resource_controlling, name="resource_controlling")
 
         polling.start()
-        pricing.start()
+        resource_controlling.start()
 
     def write_msg(self, user_id, message, keyboard={}, payload={}):
         self.vk.method(
@@ -252,11 +259,29 @@ class Bot:
             if contract[0] == "ПРОДАЖА2":
                 game.sell(point=user['point'], name=resource_name, amount=amount)
                 self.write_msg(user_id, f'Успешно!', Keyboards.governor_keyboard())
+                if auth == 0:
+                    self.users.set_context(user_id, '')
+                elif auth == 1:
+                    self.users.set_context(user_id, 'ГУБЕРНАТОР')
+                elif auth == 2:
+                    self.users.set_context(user_id, 'АДМИН')
             elif contract[0] == "ПОКУПКА2":
                 game.buy(point=user['point'], name=resource_name, amount=amount)
                 self.write_msg(user_id, f'Успешно!', Keyboards.governor_keyboard())
+                if auth == 0:
+                    self.users.set_context(user_id, '')
+                elif auth == 1:
+                    self.users.set_context(user_id, 'ГУБЕРНАТОР')
+                elif auth == 2:
+                    self.users.set_context(user_id, 'АДМИН')
             else:
                 self.write_msg(user_id, f"Ошибка!", Keyboards.governor_keyboard())
+                if auth == 0:
+                    self.users.set_context(user_id, '')
+                elif auth == 1:
+                    self.users.set_context(user_id, 'ГУБЕРНАТОР')
+                elif auth == 2:
+                    self.users.set_context(user_id, 'АДМИН')
 
         elif message == 'ОТКЛОНИТЬ':
 

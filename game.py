@@ -49,9 +49,6 @@ class Game:
     def stop(self):
         self.state = 0
 
-    def add_point(self, point: Point):
-        self.points.append(point)
-
     def get_points_names(self):
         return [point.name for point in self.points]
 
@@ -102,6 +99,10 @@ class Game:
             for resource in point.storage:
                 res = self.resources[point.storage.index(resource)]
                 resource["price"] = round(max(res.max_price/(resource["amount"] * res.k + 1), res.min_price))
+
+    def produce_resources(self):
+        for point in self.points:
+            point.storage[point.base_resource]['amount'] = self.resources[point.base_resource].production
 
     def current_time(self):
         return datetime.now() - self.start_time

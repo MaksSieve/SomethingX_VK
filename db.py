@@ -7,7 +7,7 @@ class User:
     df = pd.DataFrame()
 
     def __init__(self):
-        self.df = pd.DataFrame(columns=["user_id", "auth", "point", "context"])
+        self.df = pd.DataFrame(columns=["user_id", "auth", "point", "context", "team"])
 
     def add_user(self, user_id):
         self.df = self.df.append({"user_id": user_id, "auth": int(0)}, ignore_index=True)
