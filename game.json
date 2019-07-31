@@ -1,27 +1,27 @@
 {
   "name": "Космос Х",
   "game_time": 3,
-  "period": 10,
+  "period": 0.5,
   "gov_pass": "QWEASD",
   "adm_pass": "CXZDSA",
   "resources": [
         {
           "name": "Пища",
-          "production": 1,
+          "production": 15,
           "min_price": 10,
           "max_price": 250,
           "k":0.1
         },
         {
           "name": "Топливо",
-          "production": 1,
+          "production": 10,
           "min_price": 20,
           "max_price": 500,
           "k": 0.25
         },
         {
           "name": "Микросхемы",
-          "production": 1,
+          "production": 5,
           "min_price": 40,
           "max_price": 1200,
           "k": 0.2

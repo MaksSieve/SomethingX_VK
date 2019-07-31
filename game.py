@@ -98,11 +98,24 @@ class Game:
         for point in self.points:
             for resource in point.storage:
                 res = self.resources[point.storage.index(resource)]
-                resource["price"] = round(max(res.max_price/(resource["amount"] * res.k + 1), res.min_price))
+                resource["price"] = round(
+                    max(
+                        res.max_price/max(resource["amount"] * res.k, 1),
+                        res.min_price
+                    )
+                )
 
     def produce_resources(self):
         for point in self.points:
-            point.storage[point.base_resource]['amount'] = self.resources[point.base_resource].production
+            if point.storage[0]['amount'] > 0:
+                point.storage[point.base_resource]['amount'] += self.resources[point.base_resource].production
+
+    def consume_resources(self):
+        for point in self.points:
+            for idx in range(len(point.storage)):
+                if idx != point.base_resource:
+                    if point.storage[idx]['amount'] > 0:
+                        point.storage[idx]['amount'] -= max(round(point.storage[idx]['amount']/5), 1)
 
     def current_time(self):
         return datetime.now() - self.start_time
