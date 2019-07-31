@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from time import sleep
 
 import vk_api
@@ -30,9 +31,12 @@ print("Game loaded...")
 class Keyboards:
 
     @staticmethod
+    def empty_keyboard():
+        return VkKeyboard().get_keyboard()
+
+    @staticmethod
     def common_keyboard():
         k = VkKeyboard()
-        k.add_button("Инфо", VkKeyboardColor.PRIMARY)
         k.add_button("Помощь", VkKeyboardColor.PRIMARY)
         k.add_button("Вход", VkKeyboardColor.POSITIVE)
         return k.get_keyboard()
@@ -101,17 +105,25 @@ class Bot:
 
     def __init__(self):
         self.config = configparser.ConfigParser()
-        self.config.read(sys.argv[1])
+        self.config.read('config.cfg')
         self.vk = vk_api.VkApi(token=self.config['common']['token'])
         self.longpoll = VkLongPoll(self.vk)
 
     def polling(self):
-        while True:
-            print("Polling started...")
-            for event in self.longpoll.listen():
-                if event.type == VkEventType.MESSAGE_NEW:
-                    if event.to_me:
-                        self.dispatch(event)
+        try:
+            while True:
+                print("Polling started...")
+                for event in self.longpoll.listen():
+                    if event.type == VkEventType.MESSAGE_NEW:
+                        if event.to_me:
+                            self.dispatch(event)
+        except KeyboardInterrupt:
+            print('Interrupted')
+            self.users.save()
+            try:
+                sys.exit(0)
+            except SystemExit:
+                os._exit(0)
 
     def resource_controlling(self):
         print(f"Pricing started. Pricing every {game.period} minutes")
@@ -128,7 +140,7 @@ class Bot:
                     if user['auth'] == 1:
                         self.write_msg(user['user_id'], f"Цены обновлены")
                         self.write_msg(user['user_id'], f"{game.get_resources_on_point_string(user['point'])}")
-            if game.current_time().seconds/3600 >= game.game_time:
+            if game.state == 1 and game.current_time().seconds / 3600 >= game.game_time:
                 game.state = 0
                 print(f"От начала игры прошло {game.current_time().seconds/60} минут...")
                 for user in self.users.get_users():
@@ -137,18 +149,25 @@ class Bot:
     def run(self):
         polling = trd.Thread(target=self.polling, name="polling")
         resource_controlling = trd.Thread(target=self.resource_controlling, name="resource_controlling")
-
+        # try:
         polling.start()
         resource_controlling.start()
+        # except KeyboardInterrupt:
+        #     print('Print joining threads...')
+        #     polling.join()
+        #     resource_controlling.join()
+        #     print('Saving users...')
+        #     self.users.save()
+        #     sys.exit(0)
 
-    def write_msg(self, user_id, message, keyboard={}, payload={}):
+
+    def write_msg(self, user_id, message, keyboard=""):
         self.vk.method(
             'messages.send',
             {'user_id': user_id,
              'message': message,
              'keyboard': keyboard,
              "random_id": randint(0, 100000000000),
-             'payload': payload
              }
         )
 
@@ -191,7 +210,7 @@ class Bot:
             for user in self.users.get_users():
                 self.write_msg(user['user_id'], f"Игра остановлена!")
 
-        elif message == 'ГУБЕРНАТОР' or message == 'АДМИН':
+        elif message == 'ГУБЕРНАТОР' or message == 'АДМИН' or message == 'КАПИТАН':
             self.users.set_context(user_id=user_id, context=message)
             self.write_msg(user_id, f"Введите пароль")
 
@@ -234,6 +253,9 @@ class Bot:
                     self.write_msg(user_id, game.get_resources_on_point_string(user['point']))
                     self.write_msg(user_id, f"Выберите ресурс:",
                                    keyboard=Keyboards.resources_keyboard())
+        elif message == 'ПОСАДКА':
+            self.users.set_context(user_id=user_id, context=message)
+            self.write_msg(user_id, 'Выберите планету', keyboard=Keyboards.pick_point_keyboard())
 
         elif message in map(str.upper, [resource.name for resource in game.resources]) \
                 and (context == 'ПОКУПКА' or context == 'ПРОДАЖА'):
@@ -253,9 +275,11 @@ class Bot:
                     self.write_msg(user_id, f"Нельзя покупать базовый ресурс!!", Keyboards.admin_keyboard())
 
         elif message == "ПОДТВЕРДИТЬ" and (context.find("ПОКУПКА2") or context.find("ПРОДАЖА2")):
+
             contract = context.split("_")
             amount = int(contract[2])
             resource_name = contract[1]
+
             if contract[0] == "ПРОДАЖА2":
                 game.sell(point=user['point'], name=resource_name, amount=amount)
                 self.write_msg(user_id, f'Успешно!', Keyboards.governor_keyboard())
@@ -265,6 +289,7 @@ class Bot:
                     self.users.set_context(user_id, 'ГУБЕРНАТОР')
                 elif auth == 2:
                     self.users.set_context(user_id, 'АДМИН')
+
             elif contract[0] == "ПОКУПКА2":
                 game.buy(point=user['point'], name=resource_name, amount=amount)
                 self.write_msg(user_id, f'Успешно!', Keyboards.governor_keyboard())
@@ -274,6 +299,7 @@ class Bot:
                     self.users.set_context(user_id, 'ГУБЕРНАТОР')
                 elif auth == 2:
                     self.users.set_context(user_id, 'АДМИН')
+
             else:
                 self.write_msg(user_id, f"Ошибка!", Keyboards.governor_keyboard())
                 if auth == 0:
@@ -284,13 +310,14 @@ class Bot:
                     self.users.set_context(user_id, 'АДМИН')
 
         elif message == 'ОТКЛОНИТЬ':
-
             if auth == 0:
                 self.users.set_context(user_id, '')
                 self.write_msg(user_id, f"Принято!", Keyboards.common_keyboard())
+
             elif auth == 1:
                 self.users.set_context(user_id, 'ГУБЕРНАТОР')
                 self.write_msg(user_id, f"Принято!", Keyboards.governor_keyboard())
+
             elif auth == 2:
                 self.users.set_context(user_id, 'АДМИН')
                 self.write_msg(user_id, f"Принято!", Keyboards.admin_keyboard())
@@ -301,6 +328,7 @@ class Bot:
                     self.users.set_auth(user_id=user_id, auth=1)
                     self.write_msg(user_id, f"Авторизация пройдена. Выберите точку",
                                    keyboard=Keyboards.pick_point_keyboard())
+
                 elif message in map(str.upper, game.get_points_names()):
                     self.users.set_point(user_id=user_id, point=message)
                     self.write_msg(user_id, f"Добро пожаловать на базу, Губернатор!",
