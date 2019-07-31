@@ -110,20 +110,12 @@ class Bot:
         self.longpoll = VkLongPoll(self.vk)
 
     def polling(self):
-        try:
-            while True:
-                print("Polling started...")
-                for event in self.longpoll.listen():
-                    if event.type == VkEventType.MESSAGE_NEW:
-                        if event.to_me:
-                            self.dispatch(event)
-        except KeyboardInterrupt:
-            print('Interrupted')
-            self.users.save()
-            try:
-                sys.exit(0)
-            except SystemExit:
-                os._exit(0)
+        while True:
+            print("Polling started...")
+            for event in self.longpoll.listen():
+                if event.type == VkEventType.MESSAGE_NEW:
+                    if event.to_me:
+                        self.dispatch(event)
 
     def resource_controlling(self):
         print(f"Pricing started. Pricing every {game.period} minutes")
