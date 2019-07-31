@@ -50,7 +50,7 @@ class Keyboards:
         k.add_line()
         k.add_button("Админ", VkKeyboardColor.NEGATIVE)
         k.add_line()
-        k.add_button("Назад", VkKeyboardColor.DEFAULT)
+        k.add_button("Выход", VkKeyboardColor.DEFAULT)
         return k.get_keyboard()
 
     @staticmethod
@@ -99,6 +99,12 @@ class Keyboards:
         k.add_button('Отклонить', VkKeyboardColor.NEGATIVE)
         return k.get_keyboard()
 
+    @classmethod
+    def start_keyboard(cls):
+        k = VkKeyboard()
+        k.add_button('Начать', VkKeyboardColor.POSITIVE)
+        return k.get_keyboard()
+
 
 class Bot:
     users = db.User()
@@ -110,12 +116,20 @@ class Bot:
         self.longpoll = VkLongPoll(self.vk)
 
     def polling(self):
-        while True:
-            print("Polling started...")
-            for event in self.longpoll.listen():
-                if event.type == VkEventType.MESSAGE_NEW:
-                    if event.to_me:
-                        self.dispatch(event)
+        try:
+            for user in self.users.get_users():
+                self.write_msg(user_id=user['user_id'], message="Я родился!", keyboard=Keyboards.start_keyboard())
+            while True:
+                print("Polling started...")
+                for event in self.longpoll.listen():
+                    if event.type == VkEventType.MESSAGE_NEW:
+                        if event.to_me:
+
+                            self.dispatch(event)
+        except KeyboardInterrupt:
+            print('Saving users...')
+            self.users.save()
+            sys.exit(0)
 
     def resource_controlling(self):
         print(f"Pricing started. Pricing every {game.period} minutes")
@@ -123,15 +137,26 @@ class Bot:
         while True:
             sleep(game.period * 60)
             if game.state == 1:
-                print(f"От начала игры прошло {game.current_time().seconds/60} минут...")
-                print("Производство ресурсов...")
-                game.produce_resources()
-                print("Обновление цен...")
-                game.update_prices()
                 for user in self.users.get_users():
                     if user['auth'] == 1:
-                        self.write_msg(user['user_id'], f"Цены обновлены")
+                        print(f"От начала игры прошло {round(game.current_time().seconds/60)} минут...")
+                        self.write_msg(user['user_id'], f"От начала игры прошло {round(game.current_time().seconds/60)} минут...")
+
+                        print("Производство ресурсов...")
+                        self.write_msg(user['user_id'], f"Производство ресурсов...")
+                        game.produce_resources()
+
+                        print("Потребление ресурсов...")
+                        self.write_msg(user['user_id'], f"Потребление ресурсов...")
+                        game.consume_resources()
+
+                        print("Обновление цен...")
+                        self.write_msg(user['user_id'], f"Обновление цен...")
+                        game.update_prices()
+
+                        self.write_msg(user['user_id'], f"Цены обновлены! Новые цены:")
                         self.write_msg(user['user_id'], f"{game.get_resources_on_point_string(user['point'])}")
+
             if game.state == 1 and game.current_time().seconds / 3600 >= game.game_time:
                 game.state = 0
                 print(f"От начала игры прошло {game.current_time().seconds/60} минут...")
@@ -141,17 +166,8 @@ class Bot:
     def run(self):
         polling = trd.Thread(target=self.polling, name="polling")
         resource_controlling = trd.Thread(target=self.resource_controlling, name="resource_controlling")
-        # try:
         polling.start()
         resource_controlling.start()
-        # except KeyboardInterrupt:
-        #     print('Print joining threads...')
-        #     polling.join()
-        #     resource_controlling.join()
-        #     print('Saving users...')
-        #     self.users.save()
-        #     sys.exit(0)
-
 
     def write_msg(self, user_id, message, keyboard=""):
         self.vk.method(
@@ -189,6 +205,7 @@ class Bot:
             self.write_msg(user_id, game.help_message)
 
         elif message == 'ВХОД':
+            self.users.set_context(user_id=user_id, context=message)
             self.write_msg(user_id, f"Выберите роль!",
                            keyboard=Keyboards.auth_keyboard())
 
@@ -214,6 +231,7 @@ class Bot:
         elif message == 'ВЫХОД':
             self.users.set_context(user_id=user_id, context="")
             self.users.set_auth(user_id=user_id, auth=0)
+            self.users.set_point(user_id=user_id, point="")
             self.write_msg(user_id, f"Принято!",
                            keyboard=Keyboards.common_keyboard())
 
@@ -252,7 +270,7 @@ class Bot:
         elif message in map(str.upper, [resource.name for resource in game.resources]) \
                 and (context == 'ПОКУПКА' or context == 'ПРОДАЖА'):
 
-            if not game.is_base_resource(message, user['point']):
+            if not (game.is_base_resource(message, user['point']) and context == 'ПОКУПКА'):
                 self.users.set_context(user_id, f'{context}1_{message}')
                 self.write_msg(user_id, f"Введите количество")
             else:
@@ -350,10 +368,19 @@ class Bot:
                     self.write_msg(user_id, f"Стоимость составит {price * amount}",
                                    keyboard=Keyboards.confirmation_keyboard())
                 else:
+                    self.users.set_context(user_id, f'ГУБЕРНАТОР')
                     self.write_msg(user_id, f"Недостаточно {resource_name}",
                                    keyboard=Keyboards.governor_keyboard())
 
             else:
-                self.write_msg(user_id, "Не поняла вашего ответа...")
+                if auth == 0:
+                    self.users.set_context(user_id, '')
+                    self.write_msg(user_id, "Не поняла вашего ответа...", Keyboards.common_keyboard())
+                elif auth == 1:
+                    self.users.set_context(user_id, 'ГУБЕРНАТОР')
+                    self.write_msg(user_id, "Не поняла вашего ответа...", Keyboards.governor_keyboard())
+                elif auth == 2:
+                    self.users.set_context(user_id, 'АДМИН')
+                    self.write_msg(user_id, "Не поняла вашего ответа...", Keyboards.admin_keyboard())
 
         print(f'{user_id} --- {message} --- {context} --> {self.users.get_context(user_id)}')

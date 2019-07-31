@@ -14,9 +14,11 @@ class User:
                 self.set_context(user_id=user_id, context="")
         else:
             self.df = pd.DataFrame(columns=["user_id", "auth", "point", "context", "team"])
+            self.save()
 
     def add_user(self, user_id):
         self.df = self.df.append({"user_id": user_id, "auth": int(0)}, ignore_index=True)
+        self.save()
 
     def get_by_id(self, user_id):
         res = self.df[self.df.user_id == user_id]
@@ -24,12 +26,15 @@ class User:
 
     def set_auth(self, user_id, auth):
         self.df.loc[self.df.user_id == user_id, 'auth'] = int(auth)
+        self.save()
 
     def set_context(self, user_id, context):
         self.df.loc[self.df.user_id == user_id, 'context'] = context
+        self.save()
 
     def set_point(self, user_id, point):
         self.df.loc[self.df.user_id == user_id, 'point'] = point
+        self.save()
 
     def get_context(self, user_id):
         return self.get_by_id(user_id)['context'] if self.get_by_id(user_id) else None
@@ -38,7 +43,7 @@ class User:
         return json.loads(self.df.reset_index().to_json(orient='records')) if not self.df.empty else None
 
     def save(self):
-        self.df.to_csv('users.csv')
+        self.df.to_csv('users.csv', index=False)
 
 
 class Team:
