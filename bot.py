@@ -143,15 +143,12 @@ class Bot:
                         self.write_msg(user['user_id'], f"От начала игры прошло {round(game.current_time().seconds/60)} минут...")
 
                         print("Производство ресурсов...")
-                        self.write_msg(user['user_id'], f"Производство ресурсов...")
                         game.produce_resources()
 
                         print("Потребление ресурсов...")
-                        self.write_msg(user['user_id'], f"Потребление ресурсов...")
                         game.consume_resources()
 
                         print("Обновление цен...")
-                        self.write_msg(user['user_id'], f"Обновление цен...")
                         game.update_prices()
 
                         self.write_msg(user['user_id'], f"Цены обновлены! Новые цены:")
@@ -175,8 +172,7 @@ class Bot:
             {'user_id': user_id,
              'message': message,
              'keyboard': keyboard,
-             "random_id": randint(0, 100000000000),
-             }
+             "random_id": randint(0, 100000000000)}
         )
 
     def get_username(self, user_id):
