@@ -44,8 +44,8 @@ class Keyboards:
     @staticmethod
     def auth_keyboard():
         k = VkKeyboard()
-        k.add_button("Капитан", VkKeyboardColor.POSITIVE)
-        k.add_line()
+        # k.add_button("Капитан", VkKeyboardColor.POSITIVE)
+        # k.add_line()
         k.add_button("Губернатор", VkKeyboardColor.PRIMARY)
         k.add_line()
         k.add_button("Админ", VkKeyboardColor.NEGATIVE)
@@ -124,7 +124,6 @@ class Bot:
                 for event in self.longpoll.listen():
                     if event.type == VkEventType.MESSAGE_NEW:
                         if event.to_me:
-
                             self.dispatch(event)
         except KeyboardInterrupt:
             print('Saving users...')
@@ -140,7 +139,8 @@ class Bot:
                 for user in self.users.get_users():
                     if user['auth'] == 1:
                         print(f"От начала игры прошло {round(game.current_time().seconds/60)} минут...")
-                        self.write_msg(user['user_id'], f"От начала игры прошло {round(game.current_time().seconds/60)} минут...")
+                        self.write_msg(user['user_id'],
+                                       f"От начала игры прошло {round(game.current_time().seconds/60)} минут...")
 
                         print("Производство ресурсов...")
                         game.produce_resources()
@@ -215,7 +215,7 @@ class Bot:
             for user in self.users.get_users():
                 self.write_msg(user['user_id'], f"Игра остановлена!")
 
-        elif message == 'ГУБЕРНАТОР' or message == 'АДМИН' or message == 'КАПИТАН':
+        elif message == 'ГУБЕРНАТОР' or message == 'АДМИН':
             self.users.set_context(user_id=user_id, context=message)
             self.write_msg(user_id, f"Введите пароль")
 
@@ -233,15 +233,17 @@ class Bot:
 
         elif message == 'ЦЕНЫ':
             user = self.users.get_by_id(user_id)
-            if not user['auth'] == 1:
+            if user['auth'] == 1 and user['auth'] == 1:
+                self.write_msg(user_id=user_id,
+                               message=game.get_resources_on_point_string(user['point']),
+                               keyboard=Keyboards.governor_keyboard())
+            elif user['auth'] == 2:
+                for point in game.points:
+                    self.write_msg(user_id, f"{point.name}",
+                                   keyboard=Keyboards.admin_keyboard())
+            else:
                 self.write_msg(user_id, f"У вас нет доступа!",
                                keyboard=Keyboards.common_keyboard())
-            elif not user["point"]:
-                self.write_msg(user_id, f"Ошибка! Вы не привязаны к точке!",
-                               keyboard=Keyboards.common_keyboard())
-            else:
-                self.write_msg(user_id, game.get_resources_on_point_string(user['point']),
-                               keyboard=Keyboards.governor_keyboard())
 
         elif message == 'ПОКУПКА' or message == 'ПРОДАЖА':
             if game.state != 1:
