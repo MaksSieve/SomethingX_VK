@@ -5,6 +5,7 @@ import logging
 import os
 from time import sleep
 
+import influxdb
 import vk_api
 
 from vk_api.longpoll import VkLongPoll, VkEventType
@@ -15,7 +16,7 @@ import configparser
 import sys
 
 import db
-from game import Game
+from game import Game, Resource
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.DEBUG,
@@ -117,8 +118,9 @@ class Bot:
 
     def polling(self):
         try:
-            for user in self.users.get_users():
-                self.write_msg(user_id=user['user_id'], message="Я родился!", keyboard=Keyboards.start_keyboard())
+            if self.users.get_users():
+                for user in self.users.get_users():
+                    self.write_msg(user_id=user['user_id'], message="Я родился!", keyboard=Keyboards.start_keyboard())
             while True:
                 print("Polling started...")
                 for event in self.longpoll.listen():
@@ -136,35 +138,79 @@ class Bot:
         while True:
             sleep(game.period * 60)
             if game.state == 1:
+                print("Производство ресурсов...")
+                game.produce_resources()
+
+                print("Потребление ресурсов...")
+                game.consume_resources()
+
+                print("Обновление цен...")
+                game.update_prices()
                 for user in self.users.get_users():
                     if user['auth'] == 1:
-                        print(f"От начала игры прошло {round(game.current_time().seconds/60)} минут...")
+                        print(f"От начала игры прошло {round(game.current_time().seconds / 60)} минут...")
                         self.write_msg(user['user_id'],
-                                       f"От начала игры прошло {round(game.current_time().seconds/60)} минут...")
-
-                        print("Производство ресурсов...")
-                        game.produce_resources()
-
-                        print("Потребление ресурсов...")
-                        game.consume_resources()
-
-                        print("Обновление цен...")
-                        game.update_prices()
-
+                                       f"От начала игры прошло {round(game.current_time().seconds / 60)} минут...")
                         self.write_msg(user['user_id'], f"Цены обновлены! Новые цены:")
-                        self.write_msg(user['user_id'], f"{game.get_resources_on_point_string(user['point'])}")
+                        if user['point']:
+                            self.write_msg(user['user_id'], f"{game.get_resources_on_point_string(user['point'])}")
 
             if game.state == 1 and game.current_time().seconds / 3600 >= game.game_time:
                 game.state = 0
-                print(f"От начала игры прошло {game.current_time().seconds/60} минут...")
+                print(f"От начала игры прошло {game.current_time().seconds / 60} минут...")
                 for user in self.users.get_users():
                     self.write_msg(user['user_id'], f"Игра окончена!")
+
+    def send_stats(self):
+
+        client = influxdb.InfluxDBClient(
+            host='localhost',
+            port=8086,
+            database='something_x'
+        )
+
+        while True:
+            if game.state == 1:
+                datas = []
+                for point in game.points:
+                    p = {
+                        "measurement": "points",
+                        "tags": {
+                            "point": point.name,
+                        },
+                        "fields": {
+                            "money": point.money,
+                        }
+                    }
+
+                    for resource in game.resources:
+                        data = {
+                            "measurement": "resources",
+                            "tags": {
+                                "point": point.name,
+                                "resource": resource.name
+                            },
+                            "fields": {
+                                "price": point.storage[game.resources.index(resource)]['price'],
+                                "amount": point.storage[game.resources.index(resource)]['amount']
+                            }
+                        }
+                        datas.append(data)
+                    datas.append(p)
+
+                client.write_points(datas)
+                print('stats_sent...')
+
+            sleep(10)
 
     def run(self):
         polling = trd.Thread(target=self.polling, name="polling")
         resource_controlling = trd.Thread(target=self.resource_controlling, name="resource_controlling")
+        stats = trd.Thread(target=self.send_stats, name="stats_sending")
+
         polling.start()
         resource_controlling.start()
+        stats.start()
 
     def write_msg(self, user_id, message, keyboard=""):
         self.vk.method(
@@ -333,12 +379,12 @@ class Bot:
         else:
             if context and context == 'ГУБЕРНАТОР':
                 if message == game.gov_pass:
-                    self.users.set_auth(user_id=user_id, auth=1)
                     self.write_msg(user_id, f"Авторизация пройдена. Выберите точку",
                                    keyboard=Keyboards.pick_point_keyboard())
 
                 elif message in map(str.upper, game.get_points_names()):
                     self.users.set_point(user_id=user_id, point=message)
+                    self.users.set_auth(user_id=user_id, auth=1)
                     self.write_msg(user_id, f"Добро пожаловать на базу, Губернатор!",
                                    keyboard=Keyboards.governor_keyboard())
 
