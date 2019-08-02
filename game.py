@@ -16,6 +16,7 @@ class Point:
         self.name = name
         self.base_resource = base_resource
         self.storage = storage
+        self.money = 50000
 
 
 class Game:
@@ -87,12 +88,14 @@ class Game:
             next(filter(lambda resource: resource.name.upper() == name, self.resources), None))
 
         point.storage[resource_id]['amount'] += amount
+        point.money -= amount * point.storage[resource_id]['price']
 
     def sell(self, point, name, amount):
         point = self.get_point_by_name(point)
         resource_id = self.resources.index(
             next(filter(lambda resource: resource.name.upper() == name, self.resources), None))
         point.storage[resource_id]['amount'] -= amount
+        point.money += amount * point.storage[resource_id]['price']
 
     def update_prices(self):
         for point in self.points:
